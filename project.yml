@@ -1,0 +1,7 @@
+environment:
+  MY_BURGER_URL: "my_burger:8080"
+packages:
+  - name: authentication
+    actions:
+      - name: authenticate
+        runtime: go:1.20
