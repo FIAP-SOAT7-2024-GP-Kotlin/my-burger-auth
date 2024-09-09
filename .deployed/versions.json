@@ -5,8 +5,8 @@
     "packageVersions": {},
     "actionVersions": {
       "authentication/authenticate": {
-        "digest": "ce2913bd55ba247456f1e354e466ee11f41232d21071fa4ee15e677cf772529a",
-        "version": "0.0.2"
+        "digest": "bbeb9a38cdbfd1148e8529d2425317da14405028ca87f44a0e45dea5b3fa4106",
+        "version": "0.0.3"
       }
     }
   }
