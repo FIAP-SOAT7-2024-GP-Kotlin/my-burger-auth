@@ -1,4 +1,4 @@
-name: Deploy to DigitalOcean
+name: Deploy DigitalOcean Function
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
       - name: Set up Go environment
         uses: actions/setup-go@v4
         with:
-          go-version: '1.20'
+          go-version: '1.20'  # Specify the Go version you're using
 
       - name: Install doctl
         run: |
@@ -28,6 +28,6 @@ jobs:
         run: |
           doctl auth init --access-token $DIGITALOCEAN_ACCESS_TOKEN
 
-      - name: Deploy to DigitalOcean
+      - name: Deploy Function to DigitalOcean
         run: |
-          doctl apps update <your-app-id> --spec .do/app-spec.yml
+          doctl serverless deploy . my-burger-auth --remote-build
