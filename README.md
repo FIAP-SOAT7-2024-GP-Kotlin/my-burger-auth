@@ -1,5 +1,3 @@
-
-
 To deploy on Digital Ocean, run
 
 ```bash

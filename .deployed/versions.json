@@ -9,5 +9,16 @@
         "version": "0.0.3"
       }
     }
+  },
+  {
+    "apihost": "https://faas-nyc1-2ef2e6cc.doserverless.co",
+    "namespace": "fn-40807b32-b98c-439f-8bd7-99d62dcc3994",
+    "packageVersions": {},
+    "actionVersions": {
+      "authentication/authenticate": {
+        "digest": "4915420db25540859fef80f4e7a24af3fd89789db6c797784d2511efbb6f0dbc",
+        "version": "0.0.1"
+      }
+    }
   }
 ]

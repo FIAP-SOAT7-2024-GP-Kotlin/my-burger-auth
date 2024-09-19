@@ -1,5 +1,8 @@
 environment:
-  MY_BURGER_URL: "my_burger:8080"
+  DATABASE_URL: ""
+  DATABASE_USER: ""
+  DATABASE_PASSWORD: ""
+  DATABASE_NAME: ""
 packages:
   - name: authentication
     actions:
