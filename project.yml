@@ -3,6 +3,7 @@ environment:
   DATABASE_USER: ""
   DATABASE_PASSWORD: ""
   DATABASE_NAME: ""
+  JWT_KEY: ""
 packages:
   - name: authentication
     actions:
