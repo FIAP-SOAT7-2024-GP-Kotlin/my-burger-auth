@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 	"log"
@@ -37,21 +36,6 @@ type User struct {
 }
 
 func Main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/authenticate", handleAuthentication)
-
-	log.Println("Starting server on :8090")
-	if err := http.ListenAndServe(":8090", mux); err != nil {
-		log.Fatalf("failed to start server: %v", err)
-	}
-}
-
-// Run locally
-func main() {
-	if err := godotenv.Load("../../../.env"); err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
-	}
-
 	mux := http.NewServeMux()
 	mux.HandleFunc("/authenticate", handleAuthentication)
 
