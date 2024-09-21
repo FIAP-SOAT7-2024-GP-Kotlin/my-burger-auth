@@ -30,4 +30,4 @@ jobs:
 
       - name: Deploy Function to DigitalOcean
         run: |
-          doctl serverless deploy . my-burger-auth --remote-build
+          doctl serverless deploy . my-burger-auth
