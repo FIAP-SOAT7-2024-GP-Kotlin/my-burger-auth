@@ -1,0 +1,33 @@
+name: Deploy DigitalOcean Function
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go environment
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+
+      - name: Install doctl
+        run: |
+          sudo snap install doctl
+
+      - name: Authenticate with DigitalOcean
+        env:
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        run: |
+          doctl auth init --access-token $DIGITALOCEAN_ACCESS_TOKEN
+
+      - name: Deploy Function to DigitalOcean
+        run: |
+          doctl serverless deploy . my-burger-auth --remote-build
