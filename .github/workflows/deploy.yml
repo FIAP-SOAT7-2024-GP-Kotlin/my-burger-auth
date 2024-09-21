@@ -28,6 +28,10 @@ jobs:
         run: |
           doctl auth init --access-token $DIGITALOCEAN_ACCESS_TOKEN
 
+      - name: Connect to DigitalOcean Functions Namespace
+        run: |
+          doctl serverless connect
+
       - name: Deploy Function to DigitalOcean
         run: |
           doctl serverless deploy my-burger-auth --remote-build
