@@ -3,9 +3,10 @@ environment:
   DATABASE_USER: ""
   DATABASE_PASSWORD: ""
   DATABASE_NAME: ""
-  JWT_KEY: ""
+  DATABASE_SCHEMA: ""
+  JWT_KEY: lkjhaskljdajkdlsfjklsdgjklssdljkgff
 packages:
-  - name: authentication
-    actions:
-      - name: authenticate
-        runtime: go:1.20
+- name: authentication
+  actions:
+  - name: authenticate
+    runtime: go:1.20
