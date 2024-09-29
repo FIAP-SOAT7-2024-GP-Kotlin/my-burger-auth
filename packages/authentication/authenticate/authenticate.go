@@ -2,25 +2,41 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/google/uuid"
-	_ "github.com/lib/pq"
-	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
+	_ "github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
 )
 
-type AuthenticationRequest struct {
-	Cpf      string `json:"cpf"`
-	Password string `json:"password"`
+const (
+	UserRoleAdmin = "ADMIN"
+	UserRoleUser  = "USER"
+)
+
+type Request struct {
+	Cpf      string      `json:"cpf"`
+	Password string      `json:"password"`
+	Type     RequestType `json:"type"`
 }
 
-type AuthenticationResponse struct {
-	Token string `json:"access_token"`
+type RequestType string
+
+const (
+	USER_CREATION       RequestType = "USER_CREATION"
+	USER_AUTHENTICATION RequestType = "USER_AUTHENTICATION"
+)
+
+type Response struct {
+	StatusCode int               `json:"statusCode,omitempty"`
+	Headers    map[string]string `json:"headers,omitempty"`
+	Token      string            `json:"access_token"`
 }
 
 type Claims struct {
@@ -30,68 +46,121 @@ type Claims struct {
 
 type User struct {
 	ID       uuid.UUID
-	cpf      string
-	password string
-	role     string
+	Cpf      string
+	Password string
+	Role     string
 }
 
-func Main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/authenticate", handleAuthentication)
+var (
+	config Config
+	ErrNoRequest = errors.New("no request type provided")
+)
 
-	log.Println("Starting server on :8090")
-	if err := http.ListenAndServe(":8090", mux); err != nil {
-		log.Fatalf("failed to start server: %v", err)
+type Config struct {
+	DatabaseUrl      string
+	DatabaseUser     string
+	DatabasePassword string
+	DatabaseName     string
+	DatabaseSchema   string
+	JwtKey           string
+}
+
+func init() {
+	config = Config{
+		DatabaseUrl:      getEnv("DATABASE_URL"),
+		DatabaseUser:     getEnv("DATABASE_USER"),
+		DatabasePassword: getEnv("DATABASE_PASSWORD"),
+		DatabaseName:     getEnv("DATABASE_NAME"),
+		DatabaseSchema:   getEnv("DATABASE_SCHEMA"),
+		JwtKey:           getEnv("JWT_KEY"),
 	}
 }
 
-func handleAuthentication(w http.ResponseWriter, r *http.Request) {
-	var request AuthenticationRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "failed to decode request", http.StatusBadRequest)
-		return
+func getEnv(key string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		log.Fatalf("%s environment variable is required", key)
 	}
+	return value
+}
 
+func Main(input Request) (*Response, error) {
+	switch input.Type {
+	case USER_CREATION:
+		err := handleUserCreation(input)
+		if err != nil {
+			return &Response{StatusCode: http.StatusInternalServerError}, err
+		}
+		return &Response{StatusCode: http.StatusCreated}, nil
+	case USER_AUTHENTICATION:
+		response, err := handleAuthentication(input)
+		if err != nil {
+			return &Response{StatusCode: http.StatusUnauthorized}, err
+		}
+		return &Response{StatusCode: http.StatusOK, Token: response}, nil
+	default:
+		return &Response{StatusCode: http.StatusBadRequest}, ErrNoRequest
+	}
+}
+
+func handleAuthentication(request Request) (string, error) {
 	db, err := setupDbConnection()
 	if err != nil {
-		http.Error(w, "Error connecting to database", http.StatusInternalServerError)
-		return
+		log.Println("Error connecting to database:", err)
+		return "", err
 	}
 	defer db.Close()
 
 	user, err := findUserByCPF(db, request.Cpf)
 	if err != nil {
-		log.Println(err)
-		http.Error(w, "Error on finding user by cpf", http.StatusInternalServerError)
-		return
+		log.Println("Error finding user by CPF:", err)
+		return "", err
 	}
 
-	if err := verifyPassword(user.password, request.Password); err != nil {
-		http.Error(w, "Invalid password", http.StatusUnauthorized)
-		return
+	if err := verifyPassword(user.Password, request.Password); err != nil {
+		return "", fmt.Errorf("invalid password: %v", http.StatusUnauthorized)
 	}
 
 	token, err := generateJWT(request.Cpf)
 	if err != nil {
-		http.Error(w, "Error generating JWT token", http.StatusInternalServerError)
-		return
+		log.Println("Error generating JWT token:", err)
+		return "", err
+	}
+	return token, nil
+}
+
+func handleUserCreation(request Request) error {
+	db, err := setupDbConnection()
+	if err != nil {
+		log.Println("Error connecting to database:", err)
+		return err
+	}
+	defer db.Close()
+
+	user, err := findUserByCPF(db, request.Cpf)
+	if err != nil && err != sql.ErrNoRows {
+		log.Println("Error finding user by CPF:", err)
+		return err
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(AuthenticationResponse{Token: token})
+	if user != nil {
+		return fmt.Errorf("user already exists")
+	}
+
+	if err := createUser(db, request); err != nil {
+		log.Println("Error creating user:", err)
+		return err
+	}
+
+	return nil
 }
 
 func setupDbConnection() (*sql.DB, error) {
-	databaseUrl := os.Getenv("DATABASE_URL")
-	databaseUser := os.Getenv("DATABASE_USER")
-	databasePassword := os.Getenv("DATABASE_PASSWORD")
-	databaseName := os.Getenv("DATABASE_NAME")
-	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		databaseUrl, "5432", databaseUser, databasePassword, databaseName)
-
+	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s search_path=%s sslmode=disable",
+		config.DatabaseUrl, "5432", config.DatabaseUser, config.DatabasePassword, config.DatabaseName, config.DatabaseSchema)
 	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
-		log.Println(err)
+		log.Println("Error opening database connection:", err)
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
@@ -100,12 +169,29 @@ func setupDbConnection() (*sql.DB, error) {
 
 func findUserByCPF(db *sql.DB, cpf string) (*User, error) {
 	var user User
-	const findUserByCpfQuery = "SELECT id, cpf, password, role FROM users WHERE cpf = $1"
-	err := db.QueryRow(findUserByCpfQuery, cpf).Scan(&user.ID, &user.cpf, &user.password, &user.role)
+	const findUserByCpfQuery = "SELECT id, cpf, password, role FROM \"user\" WHERE cpf = $1"
+	err := db.QueryRow(findUserByCpfQuery, cpf).Scan(&user.ID, &user.Cpf, &user.Password, &user.Role)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("failed to query user by cpf: %w", err)
 	}
 	return &user, nil
+}
+
+func createUser(db *sql.DB, request Request) error {
+	const createUserQuery = "INSERT INTO \"user\" (id, cpf, password, role) VALUES ($1, $2, $3, $4)"
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+	_, err = db.Exec(createUserQuery, uuid.New(), request.Cpf, hashedPassword, UserRoleUser)
+	if err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+	fmt.Printf("User successfully created with cpf: %s\n", request.Cpf)
+	return nil
 }
 
 func verifyPassword(hashedPassword, password string) error {
@@ -113,19 +199,16 @@ func verifyPassword(hashedPassword, password string) error {
 }
 
 func generateJWT(cpf string) (string, error) {
-	jwtKey := os.Getenv("JWT_KEY")
-	if jwtKey == "" {
-		return "", fmt.Errorf("failed to get jwt key")
-	}
-
 	expirationTime := time.Now().Add(5 * time.Minute)
 	claims := &Claims{
 		CPF: cpf,
 		StandardClaims: jwt.StandardClaims{
+			Subject:   cpf,
+			IssuedAt:  time.Now().Unix(),
 			ExpiresAt: expirationTime.Unix(),
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(jwtKey))
+	return token.SignedString([]byte(config.JwtKey))
 }
