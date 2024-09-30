@@ -158,7 +158,7 @@ func handleUserCreation(request Request) error {
 }
 
 func setupDbConnection() (*sql.DB, error) {
-	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s search_path=%s sslmode=disable",
+	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s search_path=%s sslmode=require",
 		config.DatabaseUrl, config.Port, config.DatabaseUsername, config.DatabasePassword, config.DatabaseName, config.DatabaseSchema)
 	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
