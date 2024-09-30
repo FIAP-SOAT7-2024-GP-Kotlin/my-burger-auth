@@ -33,9 +33,9 @@ jobs:
         run: |
           DB_ID=$(doctl databases list --format ID --no-header)
           DATABASE_PASSWORD=$(doctl databases user get $DB_ID doadmin --format Password --no-header)
-          DATABASE_URL=$(doctl databases get $DB_ID --format Host --no-header)
-          DATABASE_PORT=$(doctl databases get $DB_ID --format Port --no-header)
-          DATABASE_USERNAME=$(doctl databases user get $DB_ID doadmin --format User --no-header)
+          DATABASE_URL=$(doctl databases connection $DB_ID --format Host --no-header)
+          DATABASE_PORT=$(doctl databases connection $DB_ID --format Port --no-header)
+          DATABASE_USERNAME=$(doctl databases connection $DB_ID --format User --no-header)
           echo "DATABASE_PASSWORD=$DATABASE_PASSWORD" >> $GITHUB_ENV
           echo "DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
           echo "DATABASE_PORT=$DATABASE_PORT" >> $GITHUB_ENV
