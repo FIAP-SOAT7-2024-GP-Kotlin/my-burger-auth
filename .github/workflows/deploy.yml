@@ -44,4 +44,4 @@ jobs:
       - name: Deploy Function to DigitalOcean
         working-directory: ../../
         run: |
-          doctl serverless deploy my-burger-auth --remote-build --env-file .env
+          doctl serverless deploy my-burger-auth --remote-build --env .env
