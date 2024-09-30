@@ -46,8 +46,4 @@ jobs:
       - name: Deploy Function to DigitalOcean
         working-directory: ../
         run: |
-          echo $PWD
-          ls -la
-          tree -a
-          cat my-burger-auth/packages/authentication/authenticate/.env
-          doctl serverless deploy my-burger-auth --remote-build --incremental
+          doctl serverless deploy my-burger-auth --remote-build --incremental --env $(cat my-burger-auth/packages/authentication/authenticate/.env)
