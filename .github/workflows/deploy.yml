@@ -22,15 +22,6 @@ jobs:
         run: |
           sudo snap install doctl
 
-      - name: Populate .env file with secrets
-        run: |
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
-          echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> .env
-          echo "DATABASE_USER=${{ secrets.DATABASE_USER }}" >> .env
-          echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
-          echo "DATABASE_SCHEMA=${{ secrets.DATABASE_SCHEMA }}" >> .env
-          echo "JWT_KEY=${{ secrets.JWT_KEY }}" >> .env
-
       - name: Authenticate with DigitalOcean
         env:
           DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
@@ -44,4 +35,4 @@ jobs:
       - name: Deploy Function to DigitalOcean
         working-directory: ../../
         run: |
-          doctl serverless deploy my-burger-auth --remote-build --env .env
+          doctl serverless deploy my-burger-auth --remote-build
