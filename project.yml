@@ -6,7 +6,8 @@ environment:
   DATABASE_SCHEMA: ${DATABASE_SCHEMA}
   JWT_KEY: ${JWT_KEY}
 packages:
-  - name: authentication
-    actions:
-      - name: authenticate
-        runtime: go:1.20
+- name: authentication
+  functions:
+  - name: authenticate
+    runtime: go:1.20
+    web: true
