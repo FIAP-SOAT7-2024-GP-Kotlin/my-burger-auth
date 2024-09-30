@@ -44,6 +44,7 @@ jobs:
           doctl serverless connect
 
       - name: Deploy Function to DigitalOcean
+        working-directory: ../
         run: |
           echo $PWD
           ls -la
