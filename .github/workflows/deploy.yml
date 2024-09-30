@@ -27,7 +27,7 @@ jobs:
         run: |
           echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> packages/authentication/authenticate/.env
           echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> packages/authentication/authenticate/.env
-          echo "DATABASE_USER=${{ secrets.DATABASE_USERNAME }}" >> packages/authentication/authenticate/.env
+          echo "DATABASE_USERNAME=${{ secrets.DATABASE_USERNAME }}" >> packages/authentication/authenticate/.env
           echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> packages/authentication/authenticate/.env
           echo "DATABASE_SCHEMA=${{ secrets.DATABASE_SCHEMA }}" >> packages/authentication/authenticate/.env
           echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> packages/authentication/authenticate/.env
