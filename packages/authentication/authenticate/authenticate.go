@@ -94,17 +94,19 @@ func Main(input Request) (*Response, error) {
 	case USER_CREATION:
 		err := handleUserCreation(input)
 		if err != nil {
-			return &Response{StatusCode: http.StatusInternalServerError, Message: err.Error()}, err
+			log.Println("Error creating user:", err)
+			return &Response{StatusCode: http.StatusInternalServerError, Message: "Error creating user"}, err
 		}
-		return &Response{StatusCode: http.StatusCreated}, nil
+		return &Response{StatusCode: http.StatusCreated, Message: "User successfully created"}, nil
 	case USER_AUTHENTICATION:
 		response, err := handleAuthentication(input)
 		if err != nil {
+			log.Println("Error handling authentication:", err)
 			return &Response{StatusCode: http.StatusUnauthorized, Message: err.Error()}, err
 		}
 		return &Response{StatusCode: http.StatusOK, Token: response}, nil
 	default:
-		return &Response{StatusCode: http.StatusBadRequest}, ErrNoRequest
+		return &Response{StatusCode: http.StatusBadRequest, Message: "Invalid request type"}, ErrNoRequest
 	}
 }
 
