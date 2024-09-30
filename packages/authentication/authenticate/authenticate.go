@@ -58,21 +58,23 @@ var (
 
 type Config struct {
 	DatabaseUrl      string
-	DatabaseUser     string
+	DatabaseUsername string
 	DatabasePassword string
 	DatabaseName     string
 	DatabaseSchema   string
 	JwtKey           string
+	Port						 string
 }
 
 func init() {
 	config = Config{
 		DatabaseUrl:      getEnv("DATABASE_URL"),
-		DatabaseUser:     getEnv("DATABASE_USER"),
+		DatabaseUsername: getEnv("DATABASE_USERNAME"),
 		DatabasePassword: getEnv("DATABASE_PASSWORD"),
 		DatabaseName:     getEnv("DATABASE_NAME"),
 		DatabaseSchema:   getEnv("DATABASE_SCHEMA"),
 		JwtKey:           getEnv("JWT_KEY"),
+		Port:						  getEnv("DATABASE_PORT"),
 	}
 }
 
@@ -157,7 +159,7 @@ func handleUserCreation(request Request) error {
 
 func setupDbConnection() (*sql.DB, error) {
 	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s search_path=%s sslmode=disable",
-		config.DatabaseUrl, "5432", config.DatabaseUser, config.DatabasePassword, config.DatabaseName, config.DatabaseSchema)
+		config.DatabaseUrl, config.Port, config.DatabaseUsername, config.DatabasePassword, config.DatabaseName, config.DatabaseSchema)
 	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
 		log.Println("Error opening database connection:", err)

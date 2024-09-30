@@ -30,6 +30,7 @@ jobs:
           echo "DATABASE_USER=${{ secrets.DATABASE_USER }}" >> packages/authentication/authenticate/.env
           echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> packages/authentication/authenticate/.env
           echo "DATABASE_SCHEMA=${{ secrets.DATABASE_SCHEMA }}" >> packages/authentication/authenticate/.env
+          echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> packages/authentication/authenticate/.env
           echo "JWT_KEY=${{ secrets.JWT_KEY }}" >> packages/authentication/authenticate/.env
 
       - name: Authenticate with DigitalOcean
@@ -45,4 +46,4 @@ jobs:
       - name: Deploy Function to DigitalOcean
         working-directory: ../../
         run: |
-          doctl serverless deploy my-burger-auth --remote-build --env packages/authentication/authenticate/.env
+          doctl serverless deploy my-burger-auth --remote-build
