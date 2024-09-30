@@ -36,7 +36,9 @@ const (
 type Response struct {
 	StatusCode int               `json:"statusCode,omitempty"`
 	Headers    map[string]string `json:"headers,omitempty"`
-	Token      string            `json:"access_token"`
+	Token      string            `json:"access_token,omitempty"`
+	Message      string            `json:"message",omitempty`
+
 }
 
 type Claims struct {
@@ -54,6 +56,7 @@ type User struct {
 var (
 	config Config
 	ErrNoRequest = errors.New("no request type provided")
+	ErrUserNotFound = errors.New("user not found")
 )
 
 type Config struct {
@@ -91,13 +94,13 @@ func Main(input Request) (*Response, error) {
 	case USER_CREATION:
 		err := handleUserCreation(input)
 		if err != nil {
-			return &Response{StatusCode: http.StatusInternalServerError}, err
+			return &Response{StatusCode: http.StatusInternalServerError, Message: err.Error()}, err
 		}
 		return &Response{StatusCode: http.StatusCreated}, nil
 	case USER_AUTHENTICATION:
 		response, err := handleAuthentication(input)
 		if err != nil {
-			return &Response{StatusCode: http.StatusUnauthorized}, err
+			return &Response{StatusCode: http.StatusUnauthorized, Message: err.Error()}, err
 		}
 		return &Response{StatusCode: http.StatusOK, Token: response}, nil
 	default:
@@ -120,7 +123,8 @@ func handleAuthentication(request Request) (string, error) {
 	}
 	
 	if user == nil {
-		return "", fmt.Errorf("user not found: %v", http.StatusNotFound)
+		log.Println("User not found for cpf:", request.Cpf)
+		return "", ErrUserNotFound
 
 	}
 
