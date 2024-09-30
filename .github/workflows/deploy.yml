@@ -48,6 +48,6 @@ jobs:
         run: |
           echo $PWD
           ls -la
-          tree
+          tree -a
           cat packages/authentication/authenticate/.env
           doctl serverless deploy my-burger-auth --remote-build --incremental
