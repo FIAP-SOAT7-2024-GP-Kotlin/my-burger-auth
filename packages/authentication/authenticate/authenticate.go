@@ -37,7 +37,7 @@ type Response struct {
 	StatusCode int               `json:"statusCode,omitempty"`
 	Headers    map[string]string `json:"headers,omitempty"`
 	Token      string            `json:"access_token,omitempty"`
-	Message      string            `json:"message",omitempty`
+	Message      string           `json:"message,omitempty"`
 
 }
 
