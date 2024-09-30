@@ -118,6 +118,11 @@ func handleAuthentication(request Request) (string, error) {
 		log.Println("Error finding user by CPF:", err)
 		return "", err
 	}
+	
+	if user == nil {
+		return "", fmt.Errorf("user not found: %v", http.StatusNotFound)
+
+	}
 
 	if err := verifyPassword(user.Password, request.Password); err != nil {
 		return "", fmt.Errorf("invalid password: %v", http.StatusUnauthorized)
