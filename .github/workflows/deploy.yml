@@ -22,6 +22,12 @@ jobs:
       - name: Install doctl
         run: |
           sudo snap install doctl
+
+      - name: Authenticate with DigitalOcean
+        env:
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        run: |
+          doctl auth init --access-token $DIGITALOCEAN_ACCESS_TOKEN
           
       - name: Retrieve database connection parameters
         run: |
@@ -44,12 +50,6 @@ jobs:
           echo "DATABASE_SCHEMA=${{ secrets.DATABASE_SCHEMA }}" >> packages/authentication/authenticate/.env
           echo "DATABASE_PORT=${{ env.DATABASE_PORT }}" >> packages/authentication/authenticate/.env
           echo "JWT_KEY=${{ secrets.JWT_KEY }}" >> packages/authentication/authenticate/.env
-
-      - name: Authenticate with DigitalOcean
-        env:
-          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-        run: |
-          doctl auth init --access-token $DIGITALOCEAN_ACCESS_TOKEN
 
       - name: Connect to DigitalOcean Functions Namespace
         run: |
