@@ -44,8 +44,8 @@ jobs:
           doctl serverless connect
 
       - name: Deploy Function to DigitalOcean
-        working-directory: ../
+        working-directory: ../../
         run: |
           echo $PWD
-          cat ./packages/authentication/authenticate/.env
+          cat /packages/authentication/authenticate/.env
           doctl serverless deploy my-burger-auth --remote-build --incremental
