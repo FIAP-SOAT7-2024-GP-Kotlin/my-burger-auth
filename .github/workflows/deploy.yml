@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -33,6 +34,13 @@ jobs:
           doctl serverless connect
 
       - name: Deploy Function to DigitalOcean
+        env: 
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_USER: ${{ secrets.DATABASE_USERNAME }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+          DATABASE_SCHEMA: ${{ secrets.DATABASE_SCHEMA }}
+          JWT_KEY: ${{ secrets.JWT_KEY }}
         working-directory: ../../
         run: |
-          doctl serverless deploy my-burger-auth --remote-build
+          doctl serverless deploy my-burger-auth --remote-build --env DATABASE_URL=$DATABASE_URL --env DATABASE_USER=$DATABASE_USER --env DATABASE_PASSWORD=$DATABASE_PASSWORD --env DATABASE_NAME=$DATABASE_NAME --env DATABASE_SCHEMA=$DATABASE_SCHEMA --env JWT_KEY=$JWT_KEY
