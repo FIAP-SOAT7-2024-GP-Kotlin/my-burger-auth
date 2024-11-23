@@ -29,16 +29,16 @@ type Request struct {
 type RequestType string
 
 const (
-	USER_CREATION       RequestType = "USER_CREATION"
-	USER_AUTHENTICATION RequestType = "USER_AUTHENTICATION"
+	UserCreation       RequestType = "USER_CREATION"
+	UserAuthentication RequestType = "USER_AUTHENTICATION"
+	JwtValidation      RequestType = "JWT_VALIDATION"
 )
 
 type Response struct {
 	StatusCode int               `json:"statusCode,omitempty"`
 	Headers    map[string]string `json:"headers,omitempty"`
 	Token      string            `json:"access_token,omitempty"`
-	Message      string           `json:"message,omitempty"`
-
+	Message    string            `json:"message,omitempty"`
 }
 
 type Claims struct {
@@ -54,8 +54,8 @@ type User struct {
 }
 
 var (
-	config Config
-	ErrNoRequest = errors.New("no request type provided")
+	config          Config
+	ErrNoRequest    = errors.New("no request type provided")
 	ErrUserNotFound = errors.New("user not found")
 )
 
@@ -66,7 +66,7 @@ type Config struct {
 	DatabaseName     string
 	DatabaseSchema   string
 	JwtKey           string
-	Port						 string
+	Port             string
 }
 
 func init() {
@@ -77,7 +77,7 @@ func init() {
 		DatabaseName:     getEnv("DATABASE_NAME"),
 		DatabaseSchema:   getEnv("DATABASE_SCHEMA"),
 		JwtKey:           getEnv("JWT_KEY"),
-		Port:						  getEnv("DATABASE_PORT"),
+		Port:             getEnv("DATABASE_PORT"),
 	}
 }
 
@@ -91,20 +91,27 @@ func getEnv(key string) string {
 
 func Main(input Request) (*Response, error) {
 	switch input.Type {
-	case USER_CREATION:
+	case UserCreation:
 		err := handleUserCreation(input)
 		if err != nil {
 			log.Println("Error creating user:", err)
 			return &Response{StatusCode: http.StatusInternalServerError, Message: "Error creating user"}, err
 		}
 		return &Response{StatusCode: http.StatusCreated, Message: "User successfully created"}, nil
-	case USER_AUTHENTICATION:
+	case UserAuthentication:
 		response, err := handleAuthentication(input)
 		if err != nil {
 			log.Println("Error handling authentication:", err)
 			return &Response{StatusCode: http.StatusUnauthorized, Message: err.Error()}, err
 		}
 		return &Response{StatusCode: http.StatusOK, Token: response}, nil
+	case JwtValidation:
+		claims, err := validateJWT(input.Cpf)
+		if err != nil {
+			log.Println("Error validating JWT:", err)
+			return &Response{StatusCode: http.StatusUnauthorized, Message: err.Error()}, err
+		}
+		return &Response{StatusCode: http.StatusOK, Message: fmt.Sprintf("Valid token for cpf: %s", claims.CPF)}, nil
 	default:
 		return &Response{StatusCode: http.StatusBadRequest, Message: "Invalid request type"}, ErrNoRequest
 	}
@@ -123,7 +130,7 @@ func handleAuthentication(request Request) (string, error) {
 		log.Println("Error finding user by CPF:", err)
 		return "", err
 	}
-	
+
 	if user == nil {
 		log.Println("User not found for cpf:", request.Cpf)
 		return "", ErrUserNotFound
@@ -224,4 +231,24 @@ func generateJWT(cpf string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(config.JwtKey))
+}
+
+func validateJWT(tokenString string) (*Claims, error) {
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(config.JwtKey), nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse token: %w", err)
+	}
+
+	if !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	return claims, nil
 }
