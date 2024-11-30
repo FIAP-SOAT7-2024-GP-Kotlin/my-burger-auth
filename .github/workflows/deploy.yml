@@ -31,7 +31,7 @@ jobs:
           
       - name: Retrieve database connection parameters
         run: |
-          DB_ID=$(doctl databases list --format ID --no-header)
+          DB_ID=$(doctl db list | grep pg | awk '{print $1}')
           DATABASE_PASSWORD=$(doctl databases user get $DB_ID doadmin --format Password --no-header)
           DATABASE_URL=$(doctl databases connection $DB_ID --format Host --no-header)
           DATABASE_PORT=$(doctl databases connection $DB_ID --format Port --no-header)
