@@ -21,9 +21,10 @@ const (
 )
 
 type Request struct {
-	Cpf      string      `json:"cpf"`
-	Password string      `json:"password"`
+	Cpf      *string     `json:"cpf"`
+	Password *string     `json:"password"`
 	Type     RequestType `json:"type"`
+	Token    *string     `json:"token"`
 }
 
 type RequestType string
@@ -106,7 +107,7 @@ func Main(input Request) (*Response, error) {
 		}
 		return &Response{StatusCode: http.StatusOK, Token: response}, nil
 	case JwtValidation:
-		claims, err := validateJWT(input.Cpf)
+		claims, err := validateJWT(input.Token)
 		if err != nil {
 			log.Println("Error validating JWT:", err)
 			return &Response{StatusCode: http.StatusUnauthorized, Message: err.Error()}, err
@@ -118,6 +119,9 @@ func Main(input Request) (*Response, error) {
 }
 
 func handleAuthentication(request Request) (string, error) {
+	if request.Cpf == nil || request.Password == nil {
+		return "", fmt.Errorf("cpf and password are required")
+	}
 	db, err := setupDbConnection()
 	if err != nil {
 		log.Println("Error connecting to database:", err)
@@ -125,7 +129,7 @@ func handleAuthentication(request Request) (string, error) {
 	}
 	defer db.Close()
 
-	user, err := findUserByCPF(db, request.Cpf)
+	user, err := findUserByCPF(db, *request.Cpf)
 	if err != nil {
 		log.Println("Error finding user by CPF:", err)
 		return "", err
@@ -137,11 +141,11 @@ func handleAuthentication(request Request) (string, error) {
 
 	}
 
-	if err := verifyPassword(user.Password, request.Password); err != nil {
+	if err := verifyPassword(user.Password, *request.Password); err != nil {
 		return "", fmt.Errorf("invalid password: %v", http.StatusUnauthorized)
 	}
 
-	token, err := generateJWT(request.Cpf)
+	token, err := generateJWT(*request.Cpf)
 	if err != nil {
 		log.Println("Error generating JWT token:", err)
 		return "", err
@@ -150,6 +154,10 @@ func handleAuthentication(request Request) (string, error) {
 }
 
 func handleUserCreation(request Request) error {
+	if request.Cpf == nil {
+		return fmt.Errorf("cpf is required")
+
+	}
 	db, err := setupDbConnection()
 	if err != nil {
 		log.Println("Error connecting to database:", err)
@@ -157,7 +165,7 @@ func handleUserCreation(request Request) error {
 	}
 	defer db.Close()
 
-	user, err := findUserByCPF(db, request.Cpf)
+	user, err := findUserByCPF(db, *request.Cpf)
 	if err != nil && err != sql.ErrNoRows {
 		log.Println("Error finding user by CPF:", err)
 		return err
@@ -201,8 +209,12 @@ func findUserByCPF(db *sql.DB, cpf string) (*User, error) {
 }
 
 func createUser(db *sql.DB, request Request) error {
+	if request.Cpf == nil || request.Password == nil {
+		return fmt.Errorf("cpf and password are required")
+
+	}
 	const createUserQuery = "INSERT INTO \"user\" (id, cpf, password, role) VALUES ($1, $2, $3, $4)"
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(*request.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
@@ -233,9 +245,13 @@ func generateJWT(cpf string) (string, error) {
 	return token.SignedString([]byte(config.JwtKey))
 }
 
-func validateJWT(tokenString string) (*Claims, error) {
+func validateJWT(tokenString *string) (*Claims, error) {
+	if tokenString == nil {
+		return nil, fmt.Errorf("token is required")
+	}
 	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+
+	token, err := jwt.ParseWithClaims(*tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
