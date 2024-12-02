@@ -238,7 +238,7 @@ func generateJWT(cpf string) (string, error) {
 			Subject:   cpf,
 			IssuedAt:  time.Now().Unix(),
 			ExpiresAt: expirationTime.Unix(),
-			Issuer:    "my-burger-auth",
+			Issuer:    "my_key",
 		},
 	}
 
