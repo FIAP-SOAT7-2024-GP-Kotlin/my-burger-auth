@@ -15,9 +15,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type UserRole string
+
 const (
-	UserRoleAdmin = "ADMIN"
-	UserRoleUser  = "USER"
+	UserRoleAdmin UserRole = "ADMIN"
+	UserRoleUser  UserRole = "USER"
 )
 
 type Request struct {
@@ -25,6 +27,7 @@ type Request struct {
 	Password *string     `json:"password"`
 	Type     RequestType `json:"type"`
 	Token    *string     `json:"token"`
+	Role     *UserRole   `json:"role"`
 }
 
 type RequestType string
@@ -122,7 +125,7 @@ func Main(input Request) (*Response, error) {
 			log.Println("Error getting user:", err)
 			return &Response{StatusCode: http.StatusNotFound, Message: err.Error()}, err
 		}
-		return &Response{StatusCode: http.StatusOK, Message: fmt.Sprintf("User found for cpf: %s, role: %s", response.Cpf, response.Role), Body: response}, nil
+		return &Response{StatusCode: http.StatusOK, Message: fmt.Sprintf("User found for cpf: %s, role: %s", response.Cpf, response.Role), Body: map[string]string{"cpf": response.Cpf, "role": response.Role}}, nil
 	default:
 		return &Response{StatusCode: http.StatusBadRequest, Message: "Invalid request type"}, ErrNoRequest
 	}
@@ -164,10 +167,14 @@ func handleAuthentication(request Request) (string, error) {
 }
 
 func handleUserCreation(request Request) error {
-	if request.Cpf == nil {
-		return fmt.Errorf("cpf is required")
-
+	if request.Cpf == nil || request.Password == nil || request.Role == nil {
+		return fmt.Errorf("cpf, password and role are required")
 	}
+
+	if *request.Role != UserRoleAdmin && *request.Role != UserRoleUser {
+		return fmt.Errorf("invalid role: %s", *request.Role)
+	}
+
 	db, err := setupDbConnection()
 	if err != nil {
 		log.Println("Error connecting to database:", err)
@@ -176,7 +183,7 @@ func handleUserCreation(request Request) error {
 	defer db.Close()
 
 	user, err := findUserByCPF(db, *request.Cpf)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		log.Println("Error finding user by CPF:", err)
 		return err
 	}
@@ -243,20 +250,18 @@ func findUserByCPF(db *sql.DB, cpf string) (*User, error) {
 }
 
 func createUser(db *sql.DB, request Request) error {
-	if request.Cpf == nil || request.Password == nil {
-		return fmt.Errorf("cpf and password are required")
-
-	}
-	const createUserQuery = "INSERT INTO \"user\" (id, cpf, password, role) VALUES ($1, $2, $3, $4)"
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(*request.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
-	_, err = db.Exec(createUserQuery, uuid.New(), request.Cpf, hashedPassword, UserRoleUser)
+
+	const query = "INSERT INTO \"user\" (id, cpf, password, role) VALUES ($1, $2, $3, $4)"
+	_, err = db.Exec(query, uuid.New(), request.Cpf, hashedPassword, request.Role)
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
-	fmt.Printf("User successfully created with cpf: %s\n", request.Cpf)
+
+	fmt.Printf("User successfully created with cpf: %s\n", *request.Cpf)
 	return nil
 }
 
