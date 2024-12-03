@@ -33,6 +33,7 @@ const (
 	UserCreation       RequestType = "USER_CREATION"
 	UserAuthentication RequestType = "USER_AUTHENTICATION"
 	JwtValidation      RequestType = "JWT_VALIDATION"
+	GetUser            RequestType = "GET_USER"
 )
 
 type Response struct {
@@ -40,10 +41,12 @@ type Response struct {
 	Headers    map[string]string `json:"headers,omitempty"`
 	Token      string            `json:"access_token,omitempty"`
 	Message    string            `json:"message,omitempty"`
+	Body       interface{}       `json:"body,omitempty"`
 }
 
 type Claims struct {
-	CPF string `json:"cpf"`
+	CPF  string `json:"cpf"`
+	Role string `json:"role"`
 	jwt.StandardClaims
 }
 
@@ -105,7 +108,7 @@ func Main(input Request) (*Response, error) {
 			log.Println("Error handling authentication:", err)
 			return &Response{StatusCode: http.StatusUnauthorized, Message: err.Error()}, err
 		}
-		return &Response{StatusCode: http.StatusOK, Token: response}, nil
+		return &Response{StatusCode: http.StatusOK, Token: response, Body: map[string]string{"token": response}}, nil
 	case JwtValidation:
 		claims, err := validateJWT(input.Token)
 		if err != nil {
@@ -113,6 +116,13 @@ func Main(input Request) (*Response, error) {
 			return &Response{StatusCode: http.StatusUnauthorized, Message: err.Error()}, err
 		}
 		return &Response{StatusCode: http.StatusOK, Message: fmt.Sprintf("Valid token for cpf: %s", claims.CPF)}, nil
+	case GetUser:
+		response, err := handleGetUser(input)
+		if err != nil {
+			log.Println("Error getting user:", err)
+			return &Response{StatusCode: http.StatusNotFound, Message: err.Error()}, err
+		}
+		return &Response{StatusCode: http.StatusOK, Message: fmt.Sprintf("User found for cpf: %s, role: %s", response.Cpf, response.Role), Body: response}, nil
 	default:
 		return &Response{StatusCode: http.StatusBadRequest, Message: "Invalid request type"}, ErrNoRequest
 	}
@@ -145,7 +155,7 @@ func handleAuthentication(request Request) (string, error) {
 		return "", fmt.Errorf("invalid password: %v", http.StatusUnauthorized)
 	}
 
-	token, err := generateJWT(*request.Cpf)
+	token, err := generateJWT(db, *request.Cpf)
 	if err != nil {
 		log.Println("Error generating JWT token:", err)
 		return "", err
@@ -195,12 +205,36 @@ func setupDbConnection() (*sql.DB, error) {
 	return db, nil
 }
 
+func handleGetUser(request Request) (*User, error) {
+	if request.Cpf == nil {
+		return nil, fmt.Errorf("cpf is required")
+	}
+	db, err := setupDbConnection()
+	if err != nil {
+		log.Println("Error connecting to database:", err)
+		return nil, err
+	}
+	defer db.Close()
+
+	user, err := findUserByCPF(db, *request.Cpf)
+	if err != nil {
+		log.Println("Error finding user by CPF:", err)
+		return nil, err
+	}
+
+	if user == nil {
+		return nil, ErrUserNotFound
+	}
+
+	return user, nil
+}
+
 func findUserByCPF(db *sql.DB, cpf string) (*User, error) {
 	var user User
 	const findUserByCpfQuery = "SELECT id, cpf, password, role FROM \"user\" WHERE cpf = $1"
 	err := db.QueryRow(findUserByCpfQuery, cpf).Scan(&user.ID, &user.Cpf, &user.Password, &user.Role)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to query user by cpf: %w", err)
@@ -230,10 +264,15 @@ func verifyPassword(hashedPassword, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
 
-func generateJWT(cpf string) (string, error) {
+func generateJWT(db *sql.DB, cpf string) (string, error) {
+	user, err := findUserByCPF(db, cpf)
+	if err != nil {
+		return "", fmt.Errorf("failed to find user by cpf: %w", err)
+	}
 	expirationTime := time.Now().Add(5 * time.Minute)
 	claims := &Claims{
-		CPF: cpf,
+		CPF:  cpf,
+		Role: user.Role,
 		StandardClaims: jwt.StandardClaims{
 			Subject:   cpf,
 			IssuedAt:  time.Now().Unix(),
